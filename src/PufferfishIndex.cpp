@@ -15,6 +15,9 @@
 
 std::vector<std::vector<util::Position>>* ptr1 = NULL;
 int shmid1;
+int shmid_2;
+std::vector<uint32_t>* ptr_2 = NULL;
+
 
 static inline int
 hash_string(const std::string& s) {
@@ -187,7 +190,7 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
   {
     std::ifstream file2(indexDir + "/reflengths.bin", std::ios::binary | std::ios::ate);
     key_t key = (key_t)hash_string(indexDir + "/reflengths.bin" + "refLengths_");
-    shmid = shmget(key, file2.tellg(), IPC_CREAT | 0666);
+    shmid = shmget(key, file2.tellg(), IPC_CREAT | IPC_EXCL); //0666);
 
     if(shmid != -1)
     {
@@ -215,13 +218,26 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	}
 	 std::cerr << "Step If 2 Check";
         *ptr =  refLengths_;
+	std::cerr << "refLenghts_ SIZE : " << refLengths_.size() << "\n";
     }
     else
     {
 	std::cerr << "Entered ELSE 2\n";
 	std::cerr << "Step Else 2";
-        std::vector<uint32_t>* ptr = (std::vector<uint32_t>*)shmat(shmid,NULL,0);
-        refLengths_  = *ptr;
+	shmid_2 = shmget(key, file2.tellg(), IPC_CREAT | 0666);
+        ptr_2 = (std::vector<uint32_t>*)shmat(shmid_2,NULL,0);
+	std::cerr << "SHMID_2 : " << shmid_2 << "\n";
+	std::cerr << "PTR_2 : " << ptr_2 << "\n";
+	int i = 0;
+	std::cerr << "ELSE 2 BK1 \n";
+	std::cerr << "PTR_2 SIZE : " << (*ptr_2).size() << "\n";
+	for(i = 0; i < (*ptr_2).size(); i++);
+	{
+		std::cerr << "ELSE 2 BK2 \n";
+		refLengths_[i] = (*ptr_2)[i];
+	}
+	std::cerr << "ELSE 2 BK3 \n";
+        //refLengths_  = *ptr;
     }
   }
 
