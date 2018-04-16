@@ -13,6 +13,29 @@
 
 #include "jellyfish/mer_dna.hpp"
 
+
+class membuf : public std::basic_streambuf<char> {
+public:
+  membuf(const char *p, size_t l) {
+    setg((char*)p, (char*)p, (char*)p + l);
+  }
+};
+
+
+class memstream : public std::istream {
+public:
+  memstream(const char *p, size_t l) :
+    std::istream(&_buffer),
+    _buffer(p, l) {
+    rdbuf(&_buffer);
+  }
+
+private:
+  membuf _buffer;
+};
+
+
+
 std::vector<std::vector<util::Position>>* ptr1 = NULL;
 int shmid1;
 int shmid_2;
@@ -59,9 +82,10 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
   } 
 
   {
-    std::ifstream file1(indexDir + "/info.json", std::ios::binary | std::ios::ate);
-    key_t key = (key_t)hash_string(indexDir + "/info.json" + "contigTable_");
-    shmid1 = shmget(key, file1.tellg(), IPC_CREAT | 0666); //IPC_EXCL);
+    std::ifstream file1(indexDir + "/ctable.bin", std::ios::binary | std::ios::ate);
+    key_t key = (key_t)hash_string(indexDir + "/ctable.bin" + "contigTable_");
+    std::ifstream::pos_type size = file1.tellg();
+    shmid1 = shmget(key, size, IPC_CREAT | IPC_EXCL);
     std::cerr << "KEY :" << key << "\n";
     std::cerr << "SHMID : " << shmid1 << "\n";
     if(shmid1 != -1)
@@ -83,10 +107,15 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	std::cerr << "Bookmark 6\n";
         //std::vector<std::vector<util::Position>>* ptr = NULL;
 	shmctl(shmid1, IPC_RMID, NULL);
-	shmid1 = shmget(key, file1.tellg(), IPC_CREAT | 0666);
-	ptr1 = (std::vector<std::vector<util::Position>>*)shmat(shmid1,NULL,0);
+	shmid1 = shmget(key, size, IPC_CREAT | 0666);
+	//ptr1 = (std::vector<std::vector<util::Position>>*)shmat(shmid1,NULL,0);
+	char* ptr_ch = (char*)shmat(shmid1,NULL,0);
+	char * memblock =  new char[size];
+	file1.seekg (0, std::ios::beg);
+	file1.read (memblock, size);
+	
         
-	if(ptr1 == NULL)
+	if(ptr_ch == NULL)
 	{
 		std::cerr << "POINTER IS NULL\n";		
 	}
@@ -95,11 +124,18 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		std::cerr << "POINTER IS NOT NULL\n";	
 	}        
 	std::cerr << "Bookmark 7\n";
+	std::cerr << "COUNT : " << size << "\n";
+	for(int i = 0; i < file1.tellg(); i++)
+	{
+		*ptr_ch++ = memblock[i];
+
+
+	}
 	std::cerr << "SHMIDIDID111: " << shmid1 << "\n";	
 	std::cerr << "KEY1: " << key << "\n";
-	std::cerr << "POINTER1: " << ptr1 << "\n";
-	*ptr1 = contigTable_;
-	std::cerr << "POINTER11: " << ptr1 << "\n";
+	//std::cerr << "POINTER1: " << ptr1 << "\n";
+	//*ptr1 = contigTable_;
+	//std::cerr << "POINTER11: " << ptr1 << "\n";
 	std::cerr << "Bookmark 8\n";
 	std::cerr << "Step If End 1\n";
 	
@@ -145,12 +181,18 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	{
 		std::cerr << "EA SOME OTHER ERROR" << "\n";
 	}
-	shmid1 = shmget(key, file1.tellg(), IPC_CREAT | 0666);
-        ptr1 = (std::vector<std::vector<util::Position>>*)shmat(shmid1,NULL,0);
+	shmid1 = shmget(key, size, IPC_CREAT | 0666);
+
+
+        char* ptr_ch = (char*)shmat(shmid1,NULL,0);
+
+
+
+
 	std::cerr << "KEY11 :" << key << "\n";
         std::cerr << "SHMID11 : " << shmid1 << "\n";
-	std::cerr << "POINTER1 : " << ptr1;
-	if(ptr1 == NULL)
+	std::cerr << "POINTER1 : " << ptr_ch;
+	if(ptr_ch == NULL)
 	{
 		std::cerr << "POINTER IS NULL\n";		
 	}
@@ -158,10 +200,10 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	{
 		std::cerr << "POINTER IS NOT NULL\n";	
 	}      
-	std::vector<std::vector<util::Position>> *temp = new std::vector<std::vector<util::Position>>();
-        temp  = ptr1;
-	unsigned int i,j,k;
-	std::cerr << "Check1 : \n";
+	//std::vector<std::vector<util::Position>> *temp = new std::vector<std::vector<util::Position>>();
+        //temp  = ptr1;
+	//unsigned int i,j,k;
+	//std::cerr << "Check1 : \n";
 	//contigTable_ = new std::vector<std::vector<util::Position>>(*ptr1);
 	/*for(i = 0; i < ((*ptr1).size()); i++)
 	{
@@ -178,19 +220,48 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 			contigTable_[j].push_back((*ptr1)[j][k]);	
 		}	
 	}*/
+
+
+        //CLI::AutoTimer timer{"Loading contig table", CLI::Timer::Big};
 	
+	std::cerr << "ELSE 1 : " << "memstream start \n";
+
+        memstream contigTableStream(ptr_ch, size);
+	
+	std::cerr << "ELSE 1 : " << "memstream end \n";
+
+	std::cerr << "ELSE 1 : " << "BinaryInputArchive start \n";
+	
+        cereal::BinaryInputArchive contigTableArchive(contigTableStream);
+
+	std::cerr << "ELSE 1 : " << "BinaryInputArchive end \n";
+
+	
+	contigTableArchive(refNames_);
+
+	std::cerr << "ELSE 1 : " << "refNames_ \n";
+
+
+        // contigTableArchive(cPosInfo_);
+        contigTableArchive(contigTable_);
+	
+	std::cerr << "ELSE 1 : " << "contigTableArchive \n";
+
+        //contigTableStream.close();
 	
         std::cerr << "Aabra ka dabra \n";
     }
   }
-  numContigs_ = ptr1->size();
+  //numContigs_ = ptr1->size();
+  //numContigs_ = contigTable_.size();
+  std::cerr << "CONTIG TABLE SIZE : " << contigTable_.size() << "\n";
   std::cerr << "Aabra ka dabra11111 \n";
-  std::cerr << "SIZE : " <<  ptr1->size() << "\n";
+  //std::cerr << "SIZE : " <<  ptr1->size() << "\n";
 
   {
     std::ifstream file2(indexDir + "/reflengths.bin", std::ios::binary | std::ios::ate);
     key_t key = (key_t)hash_string(indexDir + "/reflengths.bin" + "refLengths_");
-    shmid = shmget(key, file2.tellg(), IPC_CREAT | IPC_EXCL); //0666);
+    shmid = shmget(key, file2.tellg(), IPC_CREAT | 0666) ; //| IPC_EXCL); //0666);
 
     if(shmid != -1)
     {
@@ -418,7 +489,7 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
   }
   */
     std::cerr << "SLEEEEPPP : \n";
-    //sleep(10);
+    sleep(10);
 }
 
 PufferfishIndex::EqClassID PufferfishIndex::getEqClassID(uint32_t contigID) {
@@ -567,9 +638,9 @@ auto PufferfishIndex::getRefPos(CanonicalKmer& mer, util::QueryCache& qc)
       // the index of this contig
       auto rank = contigRank_(pos);
       // the reference information in the contig table
-      std::cerr << "SEGFAULT 2 start : \n";
-      auto& pvec = (*ptr1)[rank];
-      std::cerr << "SEGFAULT 2 end : \n";
+      //std::cerr << "SEGFAULT 2 start : \n";
+      auto& pvec = contigTable_[rank];
+      //std::cerr << "SEGFAULT 2 end : \n";
       // start position of this contig
       uint64_t sp = 0;
       uint64_t contigEnd = 0;
@@ -583,7 +654,7 @@ auto PufferfishIndex::getRefPos(CanonicalKmer& mer, util::QueryCache& qc)
         qc.contigStart = sp;
         qc.contigEnd = contigEnd;
       }
-      std::cerr << "BK1 : \n";
+      //std::cerr << "BK1 : \n";
       // relative offset of this k-mer in the contig
       uint32_t relPos = static_cast<uint32_t>(pos - sp);
 
@@ -595,9 +666,9 @@ auto PufferfishIndex::getRefPos(CanonicalKmer& mer, util::QueryCache& qc)
 
       // how the k-mer hits the contig (true if k-mer in fwd orientation, false
       // otherwise)
-      std::cerr << "BK2 : \n";
+      //std::cerr << "BK2 : \n";
       bool hitFW = (keq == KmerMatchType::IDENTITY_MATCH);
-      std::cerr << "BK3 : \n";
+      //std::cerr << "BK3 : \n";
       return {static_cast<uint32_t>(rank),
               pos,
               relPos,
@@ -641,7 +712,7 @@ auto PufferfishIndex::getRefPos(CanonicalKmer& mer) -> util::ProjectedHits {
       auto rank = contigRank_(pos);
       // the reference information in the contig table
       std::cerr << "SEGFAULT 3 start : \n";
-      auto& pvec = (*ptr1)[rank];
+      auto& pvec = contigTable_[rank];
       std::cerr << "SEGFAULT 3 end : \n";
       // start position of this contig
       uint64_t sp =
@@ -783,7 +854,7 @@ auto  PufferfishIndex::getContigBlock(uint64_t rank)->util::ContigBlock{
 const std::vector<util::Position>&
 PufferfishIndex::refList(uint64_t contigRank) {
   std::cerr << "SEGFAULT 1 start : \n";
-  return (*ptr1)[contigRank];
+  return contigTable_[contigRank];
   std::cerr << "SEGFAULT 1 end : \n";
 }
 
