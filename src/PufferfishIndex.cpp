@@ -259,16 +259,17 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
   //std::cerr << "SIZE : " <<  ptr1->size() << "\n";
 
   {
-    std::ifstream file2(indexDir + "/reflengths.bin", std::ios::binary | std::ios::ate);
-    key_t key = (key_t)hash_string(indexDir + "/reflengths.bin" + "refLengths_");
-    shmid = shmget(key, file2.tellg(), IPC_CREAT | 0666) ; //| IPC_EXCL); //0666);
+ 	std::ifstream file2(indexDir + "/reflengths.bin", std::ios::binary | std::ios::ate);
+	key_t key = (key_t)hash_string(indexDir + "/reflengths.bin" + "refLengths_");
+	std::ifstream::pos_type size = file2.tellg();
+	int shmid2 = shmget(key, size, IPC_CREAT | IPC_EXCL);
 
-    if(shmid != -1)
-    {
-	shmctl(shmid, IPC_RMID, NULL);
-	shmid = shmget(key, file2.tellg(), IPC_CREAT | 0666);
-        std::cerr << "Step If 2";
-        std::string rlPath = indexDir + "/reflengths.bin";
+
+	  if(shmid2 != -1)
+	  {
+
+	    std::cerr << "IF2 \n";
+	    std::string rlPath = indexDir + "/reflengths.bin";
 	    if (puffer::fs::FileExists(rlPath.c_str())) {
 	      CLI::AutoTimer timer{"Loading reference lengths", CLI::Timer::Big};
 	      std::ifstream refLengthStream(rlPath);
@@ -277,100 +278,171 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	    } else {
 	      refLengths_ = std::vector<uint32_t>(refNames_.size(), 1000);
 	    }
-        std::vector<uint32_t>* ptr = NULL;
-	ptr = (std::vector<uint32_t>*)shmat(shmid,NULL,0);
-	if(ptr == NULL)
+		shmctl(shmid2, IPC_RMID, NULL);
+		shmid2 = shmget(key, size, IPC_CREAT | 0666);
+		char* ptr_ch = (char*)shmat(shmid2,NULL,0);
+		char * memblock =  new char[size];
+		file2.seekg (0, std::ios::beg);
+		file2.read (memblock, size);
+	
+		if(ptr_ch == NULL)
+		{
+			std::cerr << "POINTER IS NULL\n";		
+		}
+		else
+		{
+			std::cerr << "POINTER IS NOT NULL\n";	
+		}        
+		for(int i = 0; i < file2.tellg(); i++)
+		{
+			*ptr_ch++ = memblock[i];
+		}
+	
+	    }
+
+
+
+	  else
+	  {
+		std::cerr << "ELSE2 \n";
+		shmid2 = shmget(key, size, IPC_CREAT | 0666);
+		char* ptr_ch = (char*)shmat(shmid2,NULL,0);
+		if(ptr_ch == NULL)
+		{
+			std::cerr << "POINTER IS NULL\n";		
+		}
+		else
+		{
+			std::cerr << "POINTER IS NOT NULL\n";	
+		}      
+		memstream refLengthStream(ptr_ch, size);
+		cereal::BinaryInputArchive refLengthArchive(refLengthStream);
+		refLengthArchive(refLengths_);
+	
+	  }
+  }
+
+  {
+	std::ifstream file3(indexDir + "/eqtable.bin", std::ios::binary | std::ios::ate);
+	key_t key = (key_t)hash_string(indexDir + "/eqtable.bin" + "eqTableStream");
+	std::ifstream::pos_type size = file3.tellg();
+	int shmid3 = shmget(key, size, IPC_CREAT | IPC_EXCL);
+
+
+	if(shmid3 != -1)
 	{
-		std::cerr << "PTR1 is NULL";
+		std::cerr << "IF 3 \n";
+	    	CLI::AutoTimer timer{"Loading eq table", CLI::Timer::Big};
+	    	std::ifstream eqTableStream(indexDir + "/eqtable.bin");
+	    	cereal::BinaryInputArchive eqTableArchive(eqTableStream);
+	    	eqTableArchive(eqClassIDs_);
+	    	eqTableArchive(eqLabels_);
+	    	eqTableStream.close();
+		shmctl(shmid3, IPC_RMID, NULL);
+		shmid3 = shmget(key, size, IPC_CREAT | 0666);
+		char* ptr_ch = (char*)shmat(shmid3,NULL,0);
+		char * memblock =  new char[size];
+		file3.seekg (0, std::ios::beg);
+		file3.read (memblock, size);
+	
+		if(ptr_ch == NULL)
+		{
+			std::cerr << "POINTER IS NULL\n";		
+		}
+		else
+		{
+			std::cerr << "POINTER IS NOT NULL\n";	
+		}        
+		for(int i = 0; i < file3.tellg(); i++)
+		{
+			*ptr_ch++ = memblock[i];
+		}
+	
 	}
+
+
+
 	else
 	{
-		std::cerr << "PTR1 is not NULL";
+		std::cerr << "ELSE 3 \n";
+		shmid3 = shmget(key, size, IPC_CREAT | 0666);
+		char* ptr_ch = (char*)shmat(shmid3,NULL,0);
+		if(ptr_ch == NULL)
+		{
+			std::cerr << "POINTER IS NULL\n";		
+		}
+		else
+		{
+			std::cerr << "POINTER IS NOT NULL\n";	
+		}      
+		memstream eqTableStream(ptr_ch, size);
+		cereal::BinaryInputArchive eqTableArchive(eqTableStream);
+	    	eqTableArchive(eqClassIDs_);
+	    	eqTableArchive(eqLabels_);
+	
 	}
-	 std::cerr << "Step If 2 Check";
-        *ptr =  refLengths_;
-	std::cerr << "refLenghts_ SIZE : " << refLengths_.size() << "\n";
-    }
-    else
-    {
-	std::cerr << "Entered ELSE 2\n";
-	std::cerr << "Step Else 2";
-	shmid_2 = shmget(key, file2.tellg(), IPC_CREAT | 0666);
-        ptr_2 = (std::vector<uint32_t>*)shmat(shmid_2,NULL,0);
-	std::cerr << "SHMID_2 : " << shmid_2 << "\n";
-	std::cerr << "PTR_2 : " << ptr_2 << "\n";
-	int i = 0;
-	std::cerr << "ELSE 2 BK1 \n";
-	std::cerr << "PTR_2 SIZE : " << (*ptr_2).size() << "\n";
-	for(i = 0; i < (*ptr_2).size(); i++);
+  }
+
+  {
+    	std::ifstream file4(indexDir + "/mphf.bin", std::ios::binary | std::ios::ate);
+	key_t key = (key_t)hash_string(indexDir + "/mphf.bin" + "hstream");
+	std::ifstream::pos_type size = file4.tellg();
+	int shmid4 = shmget(key, size, IPC_CREAT | IPC_EXCL);
+
+
+	if(shmid4 != -1)
 	{
-		std::cerr << "ELSE 2 BK2 \n";
-		refLengths_[i] = (*ptr_2)[i];
+	    std::cerr << "IF 4 \n";
+	    CLI::AutoTimer timer{"Loading mphf table", CLI::Timer::Big};
+	    std::string hfile = indexDir + "/mphf.bin";
+	    std::ifstream hstream(hfile);
+	    hash_.reset(new boophf_t);
+	    hash_->load(hstream);
+	    hstream.close();
+	    hash_raw_ = hash_.get();
+		shmctl(shmid4, IPC_RMID, NULL);
+		shmid4 = shmget(key, size, IPC_CREAT | 0666);
+		char* ptr_ch = (char*)shmat(shmid4,NULL,0);
+		char * memblock =  new char[size];
+		file4.seekg (0, std::ios::beg);
+		file4.read (memblock, size);
+		
+		if(ptr_ch == NULL)
+		{
+			std::cerr << "POINTER IS NULL\n";		
+		}
+		else
+		{
+			std::cerr << "POINTER IS NOT NULL\n";	
+		}        
+		for(int i = 0; i < file4.tellg(); i++)
+		{
+			*ptr_ch++ = memblock[i];
+		}
+		
 	}
-	std::cerr << "ELSE 2 BK3 \n";
-        //refLengths_  = *ptr;
-    }
-  }
 
-  {
-    std::ifstream file3(indexDir + "/eqtable.bin", std::ios::binary | std::ios::ate);
-    key_t key = (key_t)hash_string(indexDir + "/eqtable.bin" + "eqClassIDs_");
-    shmid = shmget(key, file3.tellg(), IPC_CREAT | 0666);
-    key_t key1 = (key_t)hash_string(indexDir + "/eqtable.bin" + "eqLabels_");
-    int shmid1 = shmget(key1, file3.tellg(), IPC_CREAT | 0666);
 
-    if(shmid != -1)
-    {
-	shmctl(shmid, IPC_RMID, NULL);
-	shmid = shmget(key, file3.tellg(), IPC_CREAT | 0666);
-	shmctl(shmid1, IPC_RMID, NULL);
-	shmid1 = shmget(key1, file3.tellg(), IPC_CREAT | 0666);
-        CLI::AutoTimer timer{"Loading eq table", CLI::Timer::Big};
-   	std::ifstream eqTableStream(indexDir + "/eqtable.bin");
-    	cereal::BinaryInputArchive eqTableArchive(eqTableStream);
-    	eqTableArchive(eqClassIDs_);
-    	eqTableArchive(eqLabels_);
-    	eqTableStream.close();
-        std::vector<uint32_t>* ptr = (std::vector<uint32_t>*)shmat(shmid,NULL,0);
-        *ptr =  eqClassIDs_;
-        std::vector<std::vector<uint32_t>>* ptr1 = (std::vector<std::vector<uint32_t>>*)shmat(shmid1,NULL,0);
-        *ptr1 =  eqLabels_;
-    }
-    else
-    {
-	std::cerr << "Entered ELSE 3\n";
-        std::vector<uint32_t>* ptr = (std::vector<uint32_t>*)shmat(shmid,NULL,0);
-        eqClassIDs_ = *ptr;
-        std::vector<std::vector<uint32_t>>* ptr1 = (std::vector<std::vector<uint32_t>>*)shmat(shmid1,NULL,0);
-        eqLabels_ = *ptr1;
-    }
-  }
 
-  {
-    std::ifstream file4(indexDir + "/mphf.bin", std::ios::binary | std::ios::ate);
-    key_t key = (key_t)hash_string(indexDir + "/mphf.bin" + "hash_raw_");
-    shmid = shmget(key, file4.tellg(), IPC_CREAT | 0666);
-
-    if(shmid != -1)
-    {
-	shmctl(shmid, IPC_RMID, NULL);
-	shmid = shmget(key, file4.tellg(), IPC_CREAT | 0666);
-        CLI::AutoTimer timer{"Loading mphf table", CLI::Timer::Big};
-    	std::string hfile = indexDir + "/mphf.bin";
-   	std::ifstream hstream(hfile);
-    	hash_.reset(new boophf_t);
-    	hash_->load(hstream);
-    	hstream.close();
-    	hash_raw_ = hash_.get();
-        boophf_t** ptr = (boophf_t**)shmat(shmid,NULL,0);
-        *ptr =  hash_raw_;
-    }
-    else
-    {
-	std::cerr << "Entered ELSE 4\n";
-        boophf_t** ptr = (boophf_t**)shmat(shmid,NULL,0);
-        hash_raw_ = *ptr;
-    }
+	else
+	{
+		std::cerr << "ELSE 4 \n";
+		shmid4 = shmget(key, size, IPC_CREAT | 0666);
+		char* ptr_ch = (char*)shmat(shmid4,NULL,0);
+		if(ptr_ch == NULL)
+		{
+			std::cerr << "POINTER IS NULL\n";		
+		}
+		else
+		{
+			std::cerr << "POINTER IS NOT NULL\n";	
+		}      
+		memstream hstream(ptr_ch, size);
+	    hash_.reset(new boophf_t);
+	    hash_->load(hstream);
+	    hash_raw_ = hash_.get();
+		
+	}
   }
 
   {
