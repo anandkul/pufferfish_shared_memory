@@ -267,6 +267,8 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	key_t key = (key_t)hash_string(indexDir + "/reflengths.bin" + "refLengths_");
 	std::ifstream::pos_type size = file2.tellg();
 	int shmid2 = shmget(key, size, IPC_CREAT | IPC_EXCL);
+	std::string tempFile = indexDir + "/reflengths.bin";
+    FILE * pFile = fopen (tempFile.c_str(), "rb");
 
 
 	  if(shmid2 != -1)
@@ -297,10 +299,11 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		{
 			std::cerr << "POINTER IS NOT NULL\n";	
 		}        
-		for(int i = 0; i < file2.tellg(); i++)
-		{
-			*ptr_ch++ = memblock[i];
-		}
+		// for(int i = 0; i < file2.tellg(); i++)
+		// {
+		// 	*ptr_ch++ = memblock[i];
+		// }
+		fread(ptr_ch, 1, file2.tellg(), pFile);
 	
 	    }
 
@@ -331,6 +334,8 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	key_t key = (key_t)hash_string(indexDir + "/eqtable.bin" + "eqTableStream");
 	std::ifstream::pos_type size = file3.tellg();
 	int shmid3 = shmget(key, size, IPC_CREAT | IPC_EXCL);
+	std::string tempFile = indexDir + "/eqtable.bin";
+    FILE * pFile = fopen (tempFile.c_str(), "rb");
 
 
 	if(shmid3 != -1)
@@ -357,10 +362,11 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		{
 			std::cerr << "POINTER IS NOT NULL\n";	
 		}        
-		for(int i = 0; i < file3.tellg(); i++)
-		{
-			*ptr_ch++ = memblock[i];
-		}
+		// for(int i = 0; i < file3.tellg(); i++)
+		// {
+		// 	*ptr_ch++ = memblock[i];
+		// }
+		fread(ptr_ch, 1, file3.tellg(), pFile);
 	
 	}
 
@@ -398,6 +404,10 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	{
 	    std::cerr << "IF 4 \n";
 	    CLI::AutoTimer timer{"Loading mphf table", CLI::Timer::Big};
+
+	    std::string tempFile = indexDir + "/mphf.bin";
+    	FILE * pFile = fopen (tempFile.c_str(), "rb");
+
 	    std::string hfile = indexDir + "/mphf.bin";
 	    std::ifstream hstream(hfile);
 	    hash_.reset(new boophf_t);
@@ -419,10 +429,11 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		{
 			std::cerr << "POINTER IS NOT NULL\n";	
 		}        
-		for(int i = 0; i < file4.tellg(); i++)
-		{
-			*ptr_ch++ = memblock[i];
-		}
+		// for(int i = 0; i < file4.tellg(); i++)
+		// {
+		// 	*ptr_ch++ = memblock[i];
+		// }
+		fread(ptr_ch, 1, file4.tellg(), pFile);
 		
 	}
 
@@ -452,6 +463,10 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
     {
     		std::ifstream file5(indexDir + "/rank.bin", std::ios::binary | std::ios::ate);
 		key_t key = (key_t)hash_string(indexDir + "/rank.bin" + "contigBoundary_");
+
+		std::string tempFile = indexDir + "/rank.bin";
+    	FILE * pFile = fopen (tempFile.c_str(), "rb");
+
 		std::ifstream::pos_type size = file5.tellg();
 		int shmid5 = shmget(key, size, IPC_CREAT | IPC_EXCL);
 
@@ -479,10 +494,11 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		{
 			std::cerr << "POINTER IS NOT NULL\n";	
 		}        
-		for(int i = 0; i < file5.tellg(); i++)
-		{
-			*ptr_ch++ = memblock[i];
-		}
+		// for(int i = 0; i < file5.tellg(); i++)
+		// {
+		// 	*ptr_ch++ = memblock[i];
+		// }
+		fread(ptr_ch, 1, file5.tellg(), pFile);
 		std::cerr << "SHMID5 : " << shmid5 << "\n";
 		
 	}
@@ -531,6 +547,10 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	    std::cerr << "IF 6 \n";
 	    CLI::AutoTimer timer{"Loading sequence", CLI::Timer::Big};
     	std::string sfile = indexDir + "/seq.bin";
+
+    	std::string tempFile = indexDir + "/seq.bin";
+    	FILE * pFile = fopen (tempFile.c_str(), "rb");
+
     	sdsl::load_from_file(seq_, sfile);
     	lastSeqPos_ = seq_.size() - k_;
 		shmctl(shmid6, IPC_RMID, NULL);
@@ -548,10 +568,11 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		{
 			std::cerr << "POINTER IS NOT NULL\n";	
 		}        
-		for(int i = 0; i < file6.tellg(); i++)
-		{
-			*ptr_ch++ = memblock[i];
-		}
+		// for(int i = 0; i < file6.tellg(); i++)
+		// {
+		// 	*ptr_ch++ = memblock[i];
+		// }
+		fread(ptr_ch, 1, file6.tellg(), pFile);
 		
 	}
 
@@ -580,6 +601,10 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
     {
     		std::ifstream file7(indexDir + "/pos.bin", std::ios::binary | std::ios::ate);
 		key_t key = (key_t)hash_string(indexDir + "/pos.bin" + "pos_");
+
+		std::string tempFile = indexDir + "/pos.bin";
+    	FILE * pFile = fopen (tempFile.c_str(), "rb");
+
 		std::ifstream::pos_type size = file7.tellg();
 		int shmid7 = shmget(key, size, IPC_CREAT | IPC_EXCL);
 
@@ -606,10 +631,11 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 			std::cerr << "POINTER IS NOT NULL\n";	
 		}
 		//fread(ptr_ch, 1, file7.tellg(), file7);        
-		for(int i = 0; i < file7.tellg(); i++)
-		{
-			*ptr_ch++ = memblock[i];
-		}
+		// for(int i = 0; i < file7.tellg(); i++)
+		// {
+		// 	*ptr_ch++ = memblock[i];
+		// }
+		fread(ptr_ch, 1, file7.tellg(), pFile);
 		
 	}
 
@@ -645,6 +671,10 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	    std::cerr << "IF 8 \n";
 	    CLI::AutoTimer timer{"Loading edges", CLI::Timer::Big};
     	std::string pfile = indexDir + "/edge.bin";
+
+    	std::string tempFile = indexDir + "/edge.bin";
+    	FILE * pFile = fopen (tempFile.c_str(), "rb");
+
     	sdsl::load_from_file(edge_, pfile);
 		shmctl(shmid8, IPC_RMID, NULL);
 		shmid8 = shmget(key, size, IPC_CREAT | 0666);
@@ -661,10 +691,11 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		{
 			std::cerr << "POINTER IS NOT NULL\n";	
 		}        
-		for(int i = 0; i < file8.tellg(); i++)
-		{
-			*ptr_ch++ = memblock[i];
-		}
+		// for(int i = 0; i < file8.tellg(); i++)
+		// {
+		// 	*ptr_ch++ = memblock[i];
+		// }
+		fread(ptr_ch, 1, file8.tellg(), pFile);
 		
 	}
 
