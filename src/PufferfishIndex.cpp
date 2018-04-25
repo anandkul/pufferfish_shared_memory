@@ -88,7 +88,7 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
     
     key_t key = (key_t)hash_string(indexDir + "/ctable.bin" + "contigTable_");
     std::ifstream::pos_type size = file1.tellg();
-    shmid1 = shmget(key, size, IPC_CREAT | IPC_EXCL);
+    shmid1 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
     std::cerr << "KEY :" << key << "\n";
     std::cerr << "SHMID : " << shmid1 << "\n";
     if(shmid1 != -1)
@@ -110,7 +110,7 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	std::cerr << "Bookmark 6\n";
         //std::vector<std::vector<util::Position>>* ptr = NULL;
 	shmctl(shmid1, IPC_RMID, NULL);
-	shmid1 = shmget(key, size, IPC_CREAT | 0666);
+	shmid1 = shmget(key, size+1, IPC_CREAT | 0666);
 	//ptr1 = (std::vector<std::vector<util::Position>>*)shmat(shmid1,NULL,0);
 	char* ptr_ch = (char*)shmat(shmid1,NULL,0);
 	char * memblock =  new char[size];
@@ -134,7 +134,11 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 
 
 	}*/
+	char* start = ptr_ch;
+	*ptr_ch++ = 'N';
+
 	fread(ptr_ch, 1, file1.tellg(), pFile);
+	*start = 'Y';
 	std::cerr << "SHMIDIDID111: " << shmid1 << "\n";	
 	std::cerr << "KEY1: " << key << "\n";
 	//std::cerr << "POINTER1: " << ptr1 << "\n";
@@ -188,13 +192,13 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 	shmid1 = shmget(key, size, IPC_CREAT | 0666);
 
 
-        char* ptr_ch = (char*)shmat(shmid1,NULL,0);
+    char* ptr_ch = (char*)shmat(shmid1,NULL,0);
 
 
 
 
 	std::cerr << "KEY11 :" << key << "\n";
-        std::cerr << "SHMID11 : " << shmid1 << "\n";
+    std::cerr << "SHMID11 : " << shmid1 << "\n";
 	std::cerr << "POINTER1 : " << ptr_ch;
 	if(ptr_ch == NULL)
 	{
@@ -227,35 +231,50 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 
 
         //CLI::AutoTimer timer{"Loading contig table", CLI::Timer::Big};
-	
-	std::cerr << "ELSE 1 : " << "memstream start \n";
+	if(*ptr_ch == 'Y')
+	{
+		
+		ptr_ch++;
+			
+		std::cerr << "ELSE 1 : " << "memstream start \n";
 
-        memstream contigTableStream(ptr_ch, size);
-	
-	std::cerr << "ELSE 1 : " << "memstream end \n";
+	        memstream contigTableStream(ptr_ch, size);
+		
+		std::cerr << "ELSE 1 : " << "memstream end \n";
 
-	std::cerr << "ELSE 1 : " << "BinaryInputArchive start \n";
-	
+		std::cerr << "ELSE 1 : " << "BinaryInputArchive start \n";
+		
+	        cereal::BinaryInputArchive contigTableArchive(contigTableStream);
+
+		std::cerr << "ELSE 1 : " << "BinaryInputArchive end \n";
+
+		
+		contigTableArchive(refNames_);
+
+		std::cerr << "ELSE 1 : " << "refNames_ \n";
+
+
+	        // contigTableArchive(cPosInfo_);
+	        contigTableArchive(contigTable_);
+		
+		std::cerr << "ELSE 1 : " << "contigTableArchive \n";
+
+	        //contigTableStream.close();
+		
+	        std::cerr << "Aabra ka dabra \n";
+    }
+    else
+    {
+    	std::cerr << "Entered ELSE ELSE BLOCK";
+    	CLI::AutoTimer timer{"Loading contig table", CLI::Timer::Big};
+        std::ifstream contigTableStream(indexDir + "/ctable.bin");
         cereal::BinaryInputArchive contigTableArchive(contigTableStream);
-
-	std::cerr << "ELSE 1 : " << "BinaryInputArchive end \n";
-
-	
-	contigTableArchive(refNames_);
-
-	std::cerr << "ELSE 1 : " << "refNames_ \n";
-
-
-        // contigTableArchive(cPosInfo_);
+		contigTableArchive(refNames_);
         contigTableArchive(contigTable_);
-	
-	std::cerr << "ELSE 1 : " << "contigTableArchive \n";
-
-        //contigTableStream.close();
-	
-        std::cerr << "Aabra ka dabra \n";
+        contigTableStream.close();
     }
   }
+}
   //numContigs_ = ptr1->size();
   //numContigs_ = contigTable_.size();
   std::cerr << "CONTIG TABLE SIZE : " << contigTable_.size() << "\n";
