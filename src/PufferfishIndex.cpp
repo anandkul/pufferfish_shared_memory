@@ -511,7 +511,7 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		{
 			std::cerr << "POINTER IS NOT NULL\n";	
 		}      
-		if(*ptr_ch == 'Y')
+		if(*ptr_ch++ == 'Y')
 		{
 			memstream hstream(ptr_ch, size);
 	    	hash_.reset(new boophf_t);
@@ -657,7 +657,7 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		// 	*ptr_ch++ = memblock[i];
 		// }
 		char* start = ptr_ch;
-		*ptr_ch = 'N';
+		*ptr_ch++ = 'N';
 		fread(ptr_ch, 1, file6.tellg(), pFile);
 		*start = 'Y';
 	}
@@ -698,7 +698,7 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		key_t key = (key_t)hash_string(indexDir + "/pos.bin" + "pos_");
 
 		std::string tempFile = indexDir + "/pos.bin";
-    	FILE * pFile = fopen (tempFile.c_str(), "rb");
+    		FILE * pFile = fopen (tempFile.c_str(), "rb");
 
 		std::ifstream::pos_type size = file7.tellg();
 		int shmid7 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
@@ -803,7 +803,7 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
 		// 	*ptr_ch++ = memblock[i];
 		// }
 		char* start = ptr_ch;
-		*ptr_ch = 'N';
+		*ptr_ch++ = 'N';
 		fread(ptr_ch, 1, file8.tellg(), pFile);
 		*start = 'Y';
 	}
