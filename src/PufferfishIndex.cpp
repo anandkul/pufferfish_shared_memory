@@ -13,35 +13,6 @@
 
 #include "jellyfish/mer_dna.hpp"
 
-
-class membuf : public std::basic_streambuf<char> {
-public:
-  membuf(const char *p, size_t l) {
-    setg((char*)p, (char*)p, (char*)p + l);
-  }
-};
-
-
-class memstream : public std::istream {
-public:
-  memstream(const char *p, size_t l) :
-    std::istream(&_buffer),
-    _buffer(p, l) {
-    rdbuf(&_buffer);
-  }
-
-private:
-  membuf _buffer;
-};
-
-
-
-std::vector<std::vector<util::Position>>* ptr1 = NULL;
-int shmid1;
-int shmid_2;
-std::vector<uint32_t>* ptr_2 = NULL;
-
-
 static inline int
 hash_string(const std::string& s) {
 	int ret = 0;
@@ -63,12 +34,15 @@ hash_string(const std::string& s) {
 
 PufferfishIndex::PufferfishIndex() {}
 
+
+
+
 PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
-  int shmid;
   if (!puffer::fs::DirExists(indexDir.c_str())) {
     std::cerr << "The index directory " << indexDir << " does not exist!\n";
     std::exit(1);
   }
+  
 
   {
     std::ifstream infoStream(indexDir + "/info.json");
@@ -79,539 +53,219 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
     std::cerr << "num kmers = " << numKmers_ << '\n';
     infoStream.close();
     twok_ = 2 * k_;
+	/*
+    	std::ifstream file(indexDir + "/reflengths.bin", std::ios::binary | std::ios::ate);
+    	key_t key = (key_t)hash_string(indexDir + "/1111reflengths.bin" + "refLengths_");
+	std::ifstream::pos_type size = file.tellg();
+	size = size * 100;
+   	int shmid = shmget(key, size, IPC_CREAT | IPC_EXCL);
+	if(shmid != -1)
+	{
+		std::cerr << "1 ";
+		shmctl(shmid, IPC_RMID, NULL);
+		std::cerr << "2 ";
+		shmid = shmget(key, size, IPC_CREAT | 0666);
+		std::cerr << "3 ";
+		int* ptr = (int*)shmat(shmid,NULL,0);
+		std::cerr << "4 ";
+		for(int i = 0; i < 50; i++)
+		{
+			std::cerr << "5 ";
+			*ptr++ = 50-i+10;
+		}
+	}
+	else
+	{
+		std::cerr << "6 ";
+		shmid = shmget(key, size, IPC_CREAT | 0666);
+		std::cerr << "7 ";
+		int* ptr = (int*)shmat(shmid,NULL,0);
+		std::cerr << "8 ";
+		for(int i = 0; i < 50; i++)
+		{
+			std::cerr << "9 ";
+			std::cerr << *ptr++ << " "; 
+		}
+	}
+	*/
+
   } 
 
   {
-    std::ifstream file1(indexDir + "/ctable.bin", std::ios::binary | std::ios::ate);
-    std::string tempFile = indexDir + "/ctable.bin";
-    FILE * pFile = fopen (tempFile.c_str(), "rb");
-    
-    key_t key = (key_t)hash_string(indexDir + "/ctable.bin" + "contigTable_");
-    std::ifstream::pos_type size = file1.tellg();
-    shmid1 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
-    std::cerr << "KEY :" << key << "\n";
-    std::cerr << "SHMID : " << shmid1 << "\n";
-    if(shmid1 != -1)
-    {
-	std::cerr << "SHMID: " << shmid1 << "\n";
-	std::cerr << "Step If 1";
-	shmctl(shmid1, IPC_RMID, NULL);
-	shmid1 = shmget(key, size+1, IPC_CREAT | 0666);
-        CLI::AutoTimer timer{"Loading contig table", CLI::Timer::Big};
-	std::cerr << "Bookmark 1 \n";
-        std::ifstream contigTableStream(indexDir + "/ctable.bin");
-	std::cerr << "Bookmark 2\n";
-        cereal::BinaryInputArchive contigTableArchive(contigTableStream);
-	std::cerr << "Bookmark 3\n";        
-	contigTableArchive(refNames_);
-	std::cerr << "Bookmark 4\n";
-        // contigTableArchive(cPosInfo_);
-        contigTableArchive(contigTable_);
-	std::cerr << "Bookmark 5\n";
-        contigTableStream.close();
-	std::cerr << "Bookmark 6\n";
-        //std::vector<std::vector<util::Position>>* ptr = NULL;
-	//ptr1 = (std::vector<std::vector<util::Position>>*)shmat(shmid1,NULL,0);
-	char* ptr_ch = (char*)shmat(shmid1,NULL,0);
-	char * memblock =  new char[size];
-	file1.seekg (0, std::ios::beg);
-	file1.read (memblock, size);
+	std::ifstream file(indexDir +  "/ctable.bin", std::ios::binary | std::ios::ate);
+	key_t key = (key_t)hash_string(indexDir + "/qqqctable.bin" + "refLengths_");
+    	std::ifstream::pos_type size = file.tellg();
+    	size = size * 200;
+    	//int shmid = shmget(key, size, IPC_CREAT | IPC_EXCL);
+    	key_t key1 = (key_t)hash_string(indexDir + "/qqqctable.bin" + "refLengths_" + "vectorSize");
+    	int shmid1 = shmget(key1, size/100, IPC_CREAT | IPC_EXCL);
+
+	if(shmid1 != -1)
+	{
 	
-        
-	if(ptr_ch == NULL)
-	{
-		std::cerr << "POINTER IS NULL\n";		
-	}
-	else
-	{
-		std::cerr << "POINTER IS NOT NULL\n";	
-	}        
-	std::cerr << "Bookmark 7\n";
-	std::cerr << "COUNT : " << size << "\n";
-	/*for(int i = 0; i < file1.tellg(); i++)
-	{
-		*ptr_ch++ = memblock[i];
 
+		//shmctl(shmid, IPC_RMID, NULL);
+		//shmid = shmget(key, size, IPC_CREAT | 0666);
+		shmctl(shmid1, IPC_RMID, NULL);
+		shmid1 = shmget(key1, size/100, IPC_CREAT | 0666);
+		CLI::AutoTimer timer{"Loading contig table", CLI::Timer::Big};
+    		std::ifstream contigTableStream(indexDir + "/ctable.bin");
+   		cereal::BinaryInputArchive contigTableArchive(contigTableStream);
+   		contigTableArchive(refNames_);
+    		// contigTableArchive(cPosInfo_);
+    		contigTableArchive(contigTable_);
+    		contigTableStream.close();
 
-	}*/
-	char* start = ptr_ch;
-	*ptr_ch++ = 'N';
+		int* ptr1 = (int*)shmat(shmid1,NULL,0);
+		*ptr1++ = contigTable_.size();
+		key_t keyTemp = (key_t)hash_string(indexDir + "/qqqctable.bin" + "refLengths_"+ "vectorElements");
+		int shmidTemp =  shmget(keyTemp, size, IPC_CREAT | 0666);
+		util::Position* ptrTemp = (util::Position*)shmat(shmidTemp,NULL,0);
 
-	fread(ptr_ch, 1, file1.tellg(), pFile);
-	*start = 'Y';
-	std::cerr << "SHMIDIDID111: " << shmid1 << "\n";	
-	std::cerr << "KEY1: " << key << "\n";
-	//std::cerr << "POINTER1: " << ptr1 << "\n";
-	//*ptr1 = contigTable_;
-	//std::cerr << "POINTER11: " << ptr1 << "\n";
-	std::cerr << "Bookmark 8\n";
-	std::cerr << "Step If End 1\n";
-	
-		
-    }
-    else
-    {
-	std::cerr << "Entered ELSE 1\n";
-	std::cerr << "Step Else 1\n";
-	if(errno == ENOMEM) 
-	{
-		std::cerr << "ENOMEM" << "\n";
-	}
-	else if(errno == EACCES) 
-	{
-		std::cerr << "EACCES" << "\n";
-	}
-	else if(errno == EEXIST) 
-	{
-		std::cerr << "EEXIST" << "\n";
-	}
-	else if(errno == EINVAL) 
-	{
-		std::cerr << "EINVAL" << "\n";
-	}
-	else if(errno == ENFILE) 
-	{
-		std::cerr << "ENFILE" << "\n";
-	}
-	else if(errno == ENOENT) 
-	{
-		std::cerr << "ENOENT" << "\n";
-	}
-	else if(errno == ENOSPC) 
-	{
-		std::cerr << "ENOSPC" << "\n";
-	}
-	else if(errno == EPERM) 
-	{
-		std::cerr << "EPERM" << "\n";
-	}
-	else  
-	{
-		std::cerr << "EA SOME OTHER ERROR" << "\n";
-	}
-	shmid1 = shmget(key, size+1, IPC_CREAT | 0666);
-
-
-    char* ptr_ch = (char*)shmat(shmid1,NULL,0);
-
-
-
-
-	std::cerr << "KEY11 :" << key << "\n";
-    std::cerr << "SHMID11 : " << shmid1 << "\n";
-	std::cerr << "POINTER1 : " << ptr_ch;
-	if(ptr_ch == NULL)
-	{
-		std::cerr << "POINTER IS NULL\n";		
-	}
-	else
-	{
-		std::cerr << "POINTER IS NOT NULL\n";	
-	}      
-	//std::vector<std::vector<util::Position>> *temp = new std::vector<std::vector<util::Position>>();
-        //temp  = ptr1;
-	//unsigned int i,j,k;
-	//std::cerr << "Check1 : \n";
-	//contigTable_ = new std::vector<std::vector<util::Position>>(*ptr1);
-	/*for(i = 0; i < ((*ptr1).size()); i++)
-	{
-		//std::cerr << "Check2 : \n";
-		std::vector<util::Position> row;
-		contigTable_.push_back(row);	
-	}
-	for(j = 0; j < ((*ptr1).size());  j++)
-	{
-		std::cerr << "Check3 : \n";
-		for(k = 0; k < (*ptr1)[j].size(); k++)
+		for(int i = 0; i < contigTable_.size(); i++)
 		{
-			std::cerr << "Check4 : \n";
-			contigTable_[j].push_back((*ptr1)[j][k]);	
-		}	
-	}*/
 
-
-        //CLI::AutoTimer timer{"Loading contig table", CLI::Timer::Big};
-	if(*ptr_ch == 'Y')
-	{
-		
-		ptr_ch++;
+			*ptr1++ = contigTable_[i].size();
 			
-		std::cerr << "ELSE 1 : " << "memstream start \n";
-
-	        memstream contigTableStream(ptr_ch, size);
-		
-		std::cerr << "ELSE 1 : " << "memstream end \n";
-
-		std::cerr << "ELSE 1 : " << "BinaryInputArchive start \n";
-		
-	        cereal::BinaryInputArchive contigTableArchive(contigTableStream);
-
-		std::cerr << "ELSE 1 : " << "BinaryInputArchive end \n";
+			
+			for(int k=0; k < contigTable_[i].size(); k++)
+			{
+				*ptrTemp++ = contigTable_[i][k];
+			}
+		}
 
 		
-		contigTableArchive(refNames_);
+	}
+	else
+	{
+		std::cerr << "contigTable_ ELSE \n";
 
-		std::cerr << "ELSE 1 : " << "refNames_ \n";
-
-
-	        // contigTableArchive(cPosInfo_);
-	        contigTableArchive(contigTable_);
+		CLI::AutoTimer timer{"Loading contig table", CLI::Timer::Big};
+    		std::ifstream contigTableStream(indexDir + "/ctable.bin");
+   		cereal::BinaryInputArchive contigTableArchive(contigTableStream);
+   		contigTableArchive(refNames_);
+    		// contigTableArchive(cPosInfo_);
+    		contigTableArchive(contigTable_);
+    		contigTableStream.close();
+		shmid1 = shmget(key1, size/100, IPC_CREAT | 0666);
+		int* ptr1 = (int*)shmat(shmid1,NULL,0);
+		int ksize = *ptr1++;
+		contigTable_.resize(ksize);
+		key_t keyTemp = (key_t)hash_string(indexDir + "/qqqctable.bin" + "refLengths_"+ "vectorElements");
+		int shmidTemp =  shmget(keyTemp, size, IPC_CREAT | 0666);
+		util::Position* ptrTemp = (util::Position*)shmat(shmidTemp,NULL,0);
+		for(int i =0 ; i < ksize; i++)
+		{
+			//std::cerr << *ptr1 << " ";
+			int tempSize = *ptr1++;
+			contigTable_[i].resize(tempSize);
+			//std::cerr<<"CHK1 ";
+			for(int k=0; k <tempSize; k++)
+			{
+				//std::cerr<<"CHK2 ";
+				contigTable_[i][k] = (*ptrTemp++);
+			}
+			
+		}
 		
-		std::cerr << "ELSE 1 : " << "contigTableArchive \n";
+	}
 
-	        //contigTableStream.close();
-		
-	        std::cerr << "Aabra ka dabra \n";
+
+
+
+    
+  }
+  numContigs_ = contigTable_.size();
+
+  {
+    {
+	//std::cerr << "chk1 ";
+    std::ifstream file2(indexDir + "/reflengths.bin", std::ios::binary | std::ios::ate);
+    key_t key = (key_t)hash_string(indexDir + "/reflengths.bin" + "refLengths_");
+    std::ifstream::pos_type size = file2.tellg();
+    size = size * 10000;
+    int shmid2 = shmget(key, size, IPC_CREAT | IPC_EXCL);
+    key_t key1 = (key_t)hash_string(indexDir + "/reflengths.bin" + "refLengths_" + "vectorSize");
+    int shmid3 = shmget(key1, size, IPC_CREAT | IPC_EXCL);
+	//std::cerr << "chk2 ";
+    if(shmid3 != -1)
+    {
+	//std::cerr << "chk3 ";
+	shmctl(shmid2, IPC_RMID, NULL);
+	shmid2 = shmget(key, size, IPC_CREAT | 0666);
+	shmctl(shmid3, IPC_RMID, NULL);
+	shmid3 = shmget(key1, size, IPC_CREAT | 0666);
+  	uint32_t* ptr2 = (uint32_t*)shmat(shmid2,NULL,0);
+	int* ptr3 = (int*)shmat(shmid3,NULL,0);
+ 	    std::string rlPath = indexDir + "/reflengths.bin";
+	    if (puffer::fs::FileExists(rlPath.c_str())) {
+	      CLI::AutoTimer timer{"Loading reference lengths", CLI::Timer::Big};
+	      std::ifstream refLengthStream(rlPath);
+	      cereal::BinaryInputArchive refLengthArchive(refLengthStream);
+	      refLengthArchive(refLengths_);
+	    } else {
+	      refLengths_ = std::vector<uint32_t>(refNames_.size(), 1000);
+	    }
+	//std::cerr << "chk4 ";
+	   refLengths_pointer = &refLengths_;
+	//std::cerr << "chk5 ";
+	*ptr3 = refLengths_.size();
+	//std::cerr << "chk6 ";
+	for(int i = 0; i < (int)refLengths_.size(); i++)
+	{
+		//std::cerr << "chk7 ";
+		*ptr2++ = refLengths_[i];
+	}
+	
+
     }
     else
     {
-    	std::cerr << "Entered ELSE ELSE BLOCK";
-    	CLI::AutoTimer timer{"Loading contig table", CLI::Timer::Big};
-        std::ifstream contigTableStream(indexDir + "/ctable.bin");
-        cereal::BinaryInputArchive contigTableArchive(contigTableStream);
-		contigTableArchive(refNames_);
-        contigTableArchive(contigTable_);
-        contigTableStream.close();
+	//std::cerr << "chk8 ";
+	int shmid2 = shmget(key, size, IPC_CREAT | 0666);
+	int shmid3 = shmget(key1, size, IPC_CREAT | 0666);
+	int* ptr3 = (int*)shmat(shmid3,NULL,0);
+	//std::cerr << "chk9 ";        
+	uint32_t* ptr2 = (uint32_t*)shmat(shmid2,NULL,0);
+	std::vector<uint32_t> refLengths_1(*ptr3);
+	//std::cerr << "chk10 ";
+	refLengths_.resize(*ptr3);
+	for(int i = 0; i < (*ptr3); i++)
+	{
+		//std::cerr << "chk11 ";
+		refLengths_[i] = *ptr2++;	
+	}
+	//std::cerr << "chk12 ";
     }
-  }
+    
 }
-  //numContigs_ = ptr1->size();
-  //numContigs_ = contigTable_.size();
-  std::cerr << "CONTIG TABLE SIZE : " << contigTable_.size() << "\n";
-  std::cerr << "Aabra ka dabra11111 \n";
-  //std::cerr << "SIZE : " <<  ptr1->size() << "\n";
-
-  {
- 	std::ifstream file2(indexDir + "/reflengths.bin", std::ios::binary | std::ios::ate);
-	key_t key = (key_t)hash_string(indexDir + "/reflengths.bin" + "refLengths_");
-	std::ifstream::pos_type size = file2.tellg();
-	int shmid2 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
-	std::string tempFile = indexDir + "/reflengths.bin";
-    FILE * pFile = fopen (tempFile.c_str(), "rb");
-
-
-	  if(shmid2 != -1)
-	  {
-
-	    	std::cerr << "IF2 \n";
-	    	shmctl(shmid2, IPC_RMID, NULL);
-		shmid2 = shmget(key, size+1, IPC_CREAT | 0666);
-	    	std::string rlPath = indexDir + "/reflengths.bin";
-	    	if (puffer::fs::FileExists(rlPath.c_str())) {
-	      	CLI::AutoTimer timer{"Loading reference lengths", CLI::Timer::Big};
-	      	std::ifstream refLengthStream(rlPath);
-	      	cereal::BinaryInputArchive refLengthArchive(refLengthStream);
-	     	refLengthArchive(refLengths_);
-	    	} else {
-	     	refLengths_ = std::vector<uint32_t>(refNames_.size(), 1000);
-	 	}
-		
-		char* ptr_ch = (char*)shmat(shmid2,NULL,0);
-		char * memblock =  new char[size];
-		file2.seekg (0, std::ios::beg);
-		file2.read (memblock, size);
-	
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}        
-		// for(int i = 0; i < file2.tellg(); i++)
-		// {
-		// 	*ptr_ch++ = memblock[i];
-		// }
-		char* start = ptr_ch;
-		*ptr_ch++ = 'N';
-		fread(ptr_ch, 1, file2.tellg(), pFile);
-		*start = 'Y';
-	    }
-
-
-
-	  else
-	  {
-
-		std::cerr << "ELSE2 \n";
-		shmid2 = shmget(key, size+1, IPC_CREAT | 0666);
-		char* ptr_ch = (char*)shmat(shmid2,NULL,0);
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}      
-		if(*ptr_ch++ == 'Y')
-		{	
-			memstream refLengthStream(ptr_ch, size);
-			cereal::BinaryInputArchive refLengthArchive(refLengthStream);
-			refLengthArchive(refLengths_);
-		}
-		else
-		{
-	
-	
-
-				std::string rlPath = indexDir + "/reflengths.bin";
-			    if (puffer::fs::FileExists(rlPath.c_str())) {
-			      CLI::AutoTimer timer{"Loading reference lengths", CLI::Timer::Big};
-			      std::ifstream refLengthStream(rlPath);
-			      cereal::BinaryInputArchive refLengthArchive(refLengthStream);
-			      refLengthArchive(refLengths_);
-			    } else {
-			      refLengths_ = std::vector<uint32_t>(refNames_.size(), 1000);
-			    }
-
-
-
-		}
-	
-	  }
   }
 
   {
-	std::ifstream file3(indexDir + "/eqtable.bin", std::ios::binary | std::ios::ate);
-	key_t key = (key_t)hash_string(indexDir + "/eqtable.bin" + "eqTableStream");
-	std::ifstream::pos_type size = file3.tellg();
-	int shmid3 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
-	std::string tempFile = indexDir + "/eqtable.bin";
-    FILE * pFile = fopen (tempFile.c_str(), "rb");
-
-
-	if(shmid3 != -1)
-	{
-		std::cerr << "IF 3 \n";
-		shmctl(shmid3, IPC_RMID, NULL);
-		shmid3 = shmget(key, size+1, IPC_CREAT | 0666);
-	    	CLI::AutoTimer timer{"Loading eq table", CLI::Timer::Big};
-	    	std::ifstream eqTableStream(indexDir + "/eqtable.bin");
-	    	cereal::BinaryInputArchive eqTableArchive(eqTableStream);
-	    	eqTableArchive(eqClassIDs_);
-	    	eqTableArchive(eqLabels_);
-	    	eqTableStream.close();
-		char* ptr_ch = (char*)shmat(shmid3,NULL,0);
-		char * memblock =  new char[size];
-		file3.seekg (0, std::ios::beg);
-		file3.read (memblock, size);
-	
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}        
-		// for(int i = 0; i < file3.tellg(); i++)
-		// {
-		// 	*ptr_ch++ = memblock[i];
-		// }
-		char* start = ptr_ch;
-		*ptr_ch++ = 'N';
-		fread(ptr_ch, 1, file3.tellg(), pFile);
-		*start = 'Y';
-	}
-
-
-
-	else
-	{
-		std::cerr << "ELSE 3 \n";
-		shmid3 = shmget(key, size+1, IPC_CREAT | 0666);
-		char* ptr_ch = (char*)shmat(shmid3,NULL,0);
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}      
-		if(*ptr_ch++ == 'Y')
-		{
-			memstream eqTableStream(ptr_ch, size);
-			cereal::BinaryInputArchive eqTableArchive(eqTableStream);
-	    	eqTableArchive(eqClassIDs_);
-	    	eqTableArchive(eqLabels_);
-	    }
-	    else
-	    {
-	    	CLI::AutoTimer timer{"Loading eq table", CLI::Timer::Big};
-		    std::ifstream eqTableStream(indexDir + "/eqtable.bin");
-		    cereal::BinaryInputArchive eqTableArchive(eqTableStream);
-		    eqTableArchive(eqClassIDs_);
-		    eqTableArchive(eqLabels_);
-		    eqTableStream.close();
-	    }
-	
-	}
+    CLI::AutoTimer timer{"Loading eq table", CLI::Timer::Big};
+    std::ifstream eqTableStream(indexDir + "/eqtable.bin");
+    cereal::BinaryInputArchive eqTableArchive(eqTableStream);
+    eqTableArchive(eqClassIDs_);
+    eqTableArchive(eqLabels_);
+    eqTableStream.close();
   }
 
   {
-    	std::ifstream file4(indexDir + "/mphf.bin", std::ios::binary | std::ios::ate);
-	key_t key = (key_t)hash_string(indexDir + "/mphf.bin" + "hstream");
-	std::ifstream::pos_type size = file4.tellg();
-	int shmid4 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
-
-
-	if(shmid4 != -1)
-	{
-		
-	    	std::cerr << "IF 4 \n";
-		shmctl(shmid4, IPC_RMID, NULL);
-		shmid4 = shmget(key, size+1, IPC_CREAT | 0666);
-	   	CLI::AutoTimer timer{"Loading mphf table", CLI::Timer::Big};
-	
-	  	std::string tempFile = indexDir + "/mphf.bin";
-    		FILE * pFile = fopen (tempFile.c_str(), "rb");
-
-	   	std::string hfile = indexDir + "/mphf.bin";
-	    	std::ifstream hstream(hfile);
-	    	hash_.reset(new boophf_t);
-	   	hash_->load(hstream);
-	   	hstream.close();
-	   	hash_raw_ = hash_.get();
-		
-		char* ptr_ch = (char*)shmat(shmid4,NULL,0);
-		char * memblock =  new char[size];
-		file4.seekg (0, std::ios::beg);
-		file4.read (memblock, size);
-		
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}        
-		// for(int i = 0; i < file4.tellg(); i++)
-		// {
-		// 	*ptr_ch++ = memblock[i];
-		// }
-		char* start = ptr_ch;
-		*ptr_ch++ = 'N';
-		fread(ptr_ch, 1, file4.tellg(), pFile);
-		*start = 'Y';
-	}
-
-
-
-	else
-	{
-		std::cerr << "ELSE 4 \n";
-		shmid4 = shmget(key, size+1, IPC_CREAT | 0666);
-		char* ptr_ch = (char*)shmat(shmid4,NULL,0);
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}      
-		if(*ptr_ch++ == 'Y')
-		{
-			memstream hstream(ptr_ch, size);
-	    	hash_.reset(new boophf_t);
-	    	hash_->load(hstream);
-	    	hash_raw_ = hash_.get();
-		}
-		else
-		{
-			CLI::AutoTimer timer{"Loading mphf table", CLI::Timer::Big};
-    		std::string hfile = indexDir + "/mphf.bin";
-   		 	std::ifstream hstream(hfile);
-   		 	hash_.reset(new boophf_t);
-   			hash_->load(hstream);
-   			 hstream.close();
-    		hash_raw_ = hash_.get();
-		}
-	}
+    CLI::AutoTimer timer{"Loading mphf table", CLI::Timer::Big};
+    std::string hfile = indexDir + "/mphf.bin";
+    std::ifstream hstream(hfile);
+    hash_.reset(new boophf_t);
+    hash_->load(hstream);
+    hstream.close();
+    hash_raw_ = hash_.get();
   }
 
-    {
-    		std::ifstream file5(indexDir + "/rank.bin", std::ios::binary | std::ios::ate);
-		key_t key = (key_t)hash_string(indexDir + "/rank.bin" + "contigBoundary_");
-
-		std::string tempFile = indexDir + "/rank.bin";
-    		FILE * pFile = fopen (tempFile.c_str(), "rb");
-
-		std::ifstream::pos_type size = file5.tellg();
-		int shmid5 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
-
-
-	if(shmid5 != -1)
-	{
-	    	std::cerr << "IF 5 \n";
-		shmctl(shmid5, IPC_RMID, NULL);
-		shmid5 = shmget(key, size+1, IPC_CREAT | 0666);
-	   	CLI::AutoTimer timer{"Loading contig boundaries", CLI::Timer::Big};
-    	   	std::string bfile = indexDir + "/rank.bin";
-    	    	sdsl::load_from_file(contigBoundary_, bfile);
-    	    	contigRank_ = decltype(contigBoundary_)::rank_1_type(&contigBoundary_);
-    	   	contigSelect_ = decltype(contigBoundary_)::select_1_type(&contigBoundary_);
-		char* ptr_ch = (char*)shmat(shmid5,NULL,0);
-		char * memblock =  new char[size];
-		file5.seekg (0, std::ios::beg);
-		file5.read (memblock, size);
-		
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}        
-		// for(int i = 0; i < file5.tellg(); i++)
-		// {
-		// 	*ptr_ch++ = memblock[i];
-		// }
-		char* start = ptr_ch;
-		*ptr_ch++ = 'N';
-		fread(ptr_ch, 1, file5.tellg(), pFile);
-		*start = 'N';
-		std::cerr << "SHMID5 : " << shmid5 << "\n";
-		
-	}
-
-
-
-	else
-	{
-		std::cerr << "ELSE 5 \n";
-		shmid5 = shmget(key, size+1, IPC_CREAT | 0666);
-		char* ptr_ch = (char*)shmat(shmid5,NULL,0);
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}   
-		if(*ptr_ch++ == 'Y')
-		{
-			memstream rstream(ptr_ch, size);
-			contigBoundary_.load(rstream);
-    		contigRank_ = decltype(contigBoundary_)::rank_1_type(&contigBoundary_);
-    		contigSelect_ = decltype(contigBoundary_)::select_1_type(&contigBoundary_);
-			std::cerr << "SHMID5 : " << shmid5 << "\n";
-		}
-		else
-		{
-			CLI::AutoTimer timer{"Loading contig boundaries", CLI::Timer::Big};
-    		std::string bfile = indexDir + "/rank.bin";
-    		sdsl::load_from_file(contigBoundary_, bfile);
-    		contigRank_ = decltype(contigBoundary_)::rank_1_type(&contigBoundary_);
-    		contigSelect_ = decltype(contigBoundary_)::select_1_type(&contigBoundary_);
-		}
-	}
+  {
+    CLI::AutoTimer timer{"Loading contig boundaries", CLI::Timer::Big};
+    std::string bfile = indexDir + "/rank.bin";
+    sdsl::load_from_file(contigBoundary_, bfile);
+    contigRank_ = decltype(contigBoundary_)::rank_1_type(&contigBoundary_);
+    contigSelect_ = decltype(contigBoundary_)::select_1_type(&contigBoundary_);
   }
   /*
   selectPrecomp_.reserve(numContigs_+1);
@@ -622,229 +276,23 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
   selectPrecomp_.push_back(contigSelect_(numContigs_));
   */
 
-    {
-    	std::ifstream file6(indexDir + "/seq.bin", std::ios::binary | std::ios::ate);
-		key_t key = (key_t)hash_string(indexDir + "/seq.bin" + "seq_");
-		std::ifstream::pos_type size = file6.tellg();
-		int shmid6 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
-
-
-	if(shmid6 != -1)
-	{
-	   	 std::cerr << "IF 6 \n";
-		shmctl(shmid6, IPC_RMID, NULL);
-		shmid6 = shmget(key, size+1, IPC_CREAT | 0666);
-	   	 CLI::AutoTimer timer{"Loading sequence", CLI::Timer::Big};
-    		std::string sfile = indexDir + "/seq.bin";
-
-    		std::string tempFile = indexDir + "/seq.bin";
-    		FILE * pFile = fopen (tempFile.c_str(), "rb");
-
-    		sdsl::load_from_file(seq_, sfile);
-    		lastSeqPos_ = seq_.size() - k_;
-		
-		char* ptr_ch = (char*)shmat(shmid6,NULL,0);
-		char * memblock =  new char[size];
-		file6.seekg (0, std::ios::beg);
-		file6.read (memblock, size);
-		
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}        
-		// for(int i = 0; i < file6.tellg(); i++)
-		// {
-		// 	*ptr_ch++ = memblock[i];
-		// }
-		char* start = ptr_ch;
-		*ptr_ch++ = 'N';
-		fread(ptr_ch, 1, file6.tellg(), pFile);
-		*start = 'Y';
-	}
-
-
-
-	else
-	{
-		std::cerr << "ELSE 6 \n";
-		shmid6 = shmget(key, size+1, IPC_CREAT | 0666);
-		char* ptr_ch = (char*)shmat(shmid6,NULL,0);
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}   
-		if(*ptr_ch++ == 'Y')
-		{
-			memstream seqstream(ptr_ch, size);
-			seq_.load(seqstream);
-    		lastSeqPos_ = seq_.size() - k_;
-		}
-		else
-		{
-			CLI::AutoTimer timer{"Loading sequence", CLI::Timer::Big};
-    		std::string sfile = indexDir + "/seq.bin";
-    		sdsl::load_from_file(seq_, sfile);
-    		lastSeqPos_ = seq_.size() - k_;
-		}
-	}
+  {
+    CLI::AutoTimer timer{"Loading sequence", CLI::Timer::Big};
+    std::string sfile = indexDir + "/seq.bin";
+    sdsl::load_from_file(seq_, sfile);
+    lastSeqPos_ = seq_.size() - k_;
   }
 
-    {
-    		std::ifstream file7(indexDir + "/pos.bin", std::ios::binary | std::ios::ate);
-		key_t key = (key_t)hash_string(indexDir + "/pos.bin" + "pos_");
-
-		std::string tempFile = indexDir + "/pos.bin";
-    		FILE * pFile = fopen (tempFile.c_str(), "rb");
-
-		std::ifstream::pos_type size = file7.tellg();
-		int shmid7 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
-
-
-	if(shmid7 != -1)
-	{
-	    	std::cerr << "IF 7 \n";
-		shmctl(shmid7, IPC_RMID, NULL);
-		shmid7 = shmget(key, size+1, IPC_CREAT | 0666);
-	    	CLI::AutoTimer timer{"Loading positions", CLI::Timer::Big};
-    	    	std::string pfile = indexDir + "/pos.bin";
-    	    	sdsl::load_from_file(pos_, pfile);
-		char* ptr_ch = (char*)shmat(shmid7,NULL,0);
-		std::cerr << "POINTER : " << ptr_ch <<"\n";
-		char * memblock =  new char[size];
-		file7.seekg (0, std::ios::beg);
-		file7.read (memblock, size);
-		
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}
-		//fread(ptr_ch, 1, file7.tellg(), file7);        
-		// for(int i = 0; i < file7.tellg(); i++)
-		// {
-		// 	*ptr_ch++ = memblock[i];
-		// }
-		std::cerr << "IF7 : 1\n";	
-		char* start = ptr_ch;
-		std::cerr << "IF7 : 2\n";
-		*ptr_ch++ = 'N';
-		std::cerr << "IF7 : 3\n";		
-		fread(ptr_ch, 1, file7.tellg(), pFile);
-		std::cerr << "IF7 : 4\n";
-		*start = 'Y';
-		std::cerr << "IF7 : 5\n";		
-	}
-
-
-
-	else
-	{
-		std::cerr << "ELSE 7 \n";
-		shmid7 = shmget(key, size+1, IPC_CREAT | 0666);
-		char* ptr_ch = (char*)shmat(shmid7,NULL,0);
-		std::cerr << "POINTER : " << ptr_ch <<"\n";
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}      
-		if(*ptr_ch++ == 'Y')
-		{
-			std::cerr << "Entered Y\n";
-			memstream posstream(ptr_ch, size);
-			pos_.load(posstream);   	
-		}
-		else
-		{
-			std::cerr << "Entered N\n";
-			CLI::AutoTimer timer{"Loading positions", CLI::Timer::Big};
-   			std::string pfile = indexDir + "/pos.bin";
-    		        sdsl::load_from_file(pos_, pfile);
-		}
-	}
+  {
+    CLI::AutoTimer timer{"Loading positions", CLI::Timer::Big};
+    std::string pfile = indexDir + "/pos.bin";
+    sdsl::load_from_file(pos_, pfile);
   }
 
-    {
-    	std::ifstream file8(indexDir + "/edge.bin", std::ios::binary | std::ios::ate);
-		key_t key = (key_t)hash_string(indexDir + "/edge.bin" + "edge_");
-		std::ifstream::pos_type size = file8.tellg();
-		int shmid8 = shmget(key, size+1, IPC_CREAT | IPC_EXCL);
-
-
-	if(shmid8 != -1)
-	{
-	    	std::cerr << "IF 8 \n";
-		shmctl(shmid8, IPC_RMID, NULL);
-		shmid8 = shmget(key, size+1, IPC_CREAT | 0666);
-	   	CLI::AutoTimer timer{"Loading edges", CLI::Timer::Big};
-    	        std::string pfile = indexDir + "/edge.bin";
-    	        std::string tempFile = indexDir + "/edge.bin";
-    	        FILE * pFile = fopen (tempFile.c_str(), "rb");
-    	        sdsl::load_from_file(edge_, pfile);
-		char* ptr_ch = (char*)shmat(shmid8,NULL,0);
-		char * memblock =  new char[size];
-		file8.seekg (0, std::ios::beg);
-		file8.read (memblock, size);
-		
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}        
-		// for(int i = 0; i < file8.tellg(); i++)
-		// {
-		// 	*ptr_ch++ = memblock[i];
-		// }
-		char* start = ptr_ch;
-		*ptr_ch++ = 'N';
-		fread(ptr_ch, 1, file8.tellg(), pFile);
-		*start = 'Y';
-	}
-
-
-
-	else
-	{
-		std::cerr << "ELSE 8 \n";
-		shmid8 = shmget(key, size+1, IPC_CREAT | 0666);
-		char* ptr_ch = (char*)shmat(shmid8,NULL,0);
-		if(ptr_ch == NULL)
-		{
-			std::cerr << "POINTER IS NULL\n";		
-		}
-		else
-		{
-			std::cerr << "POINTER IS NOT NULL\n";	
-		}    
-		if(*ptr_ch++ == 'Y')
-		{
-			memstream edgestream(ptr_ch, size);
-			edge_.load(edgestream);   	
-		}
-		else
-		{
-			CLI::AutoTimer timer{"Loading edges", CLI::Timer::Big};
-   			std::string pfile = indexDir + "/edge.bin";
-    		sdsl::load_from_file(edge_, pfile);
-		}
-	}
+  {
+    CLI::AutoTimer timer{"Loading edges", CLI::Timer::Big};
+    std::string pfile = indexDir + "/edge.bin";
+    sdsl::load_from_file(edge_, pfile);
   }
   /*
   {
@@ -853,8 +301,6 @@ PufferfishIndex::PufferfishIndex(const std::string& indexDir) {
     sdsl::load_from_file(revedge_, pfile);
   }
   */
-    std::cerr << "SLEEEEPPP : \n";
-    //sleep(10);
 }
 
 PufferfishIndex::EqClassID PufferfishIndex::getEqClassID(uint32_t contigID) {
@@ -1003,9 +449,7 @@ auto PufferfishIndex::getRefPos(CanonicalKmer& mer, util::QueryCache& qc)
       // the index of this contig
       auto rank = contigRank_(pos);
       // the reference information in the contig table
-      //std::cerr << "SEGFAULT 2 start : \n";
       auto& pvec = contigTable_[rank];
-      //std::cerr << "SEGFAULT 2 end : \n";
       // start position of this contig
       uint64_t sp = 0;
       uint64_t contigEnd = 0;
@@ -1019,7 +463,7 @@ auto PufferfishIndex::getRefPos(CanonicalKmer& mer, util::QueryCache& qc)
         qc.contigStart = sp;
         qc.contigEnd = contigEnd;
       }
-      //std::cerr << "BK1 : \n";
+
       // relative offset of this k-mer in the contig
       uint32_t relPos = static_cast<uint32_t>(pos - sp);
 
@@ -1031,9 +475,7 @@ auto PufferfishIndex::getRefPos(CanonicalKmer& mer, util::QueryCache& qc)
 
       // how the k-mer hits the contig (true if k-mer in fwd orientation, false
       // otherwise)
-      //std::cerr << "BK2 : \n";
       bool hitFW = (keq == KmerMatchType::IDENTITY_MATCH);
-      //std::cerr << "BK3 : \n";
       return {static_cast<uint32_t>(rank),
               pos,
               relPos,
@@ -1076,9 +518,7 @@ auto PufferfishIndex::getRefPos(CanonicalKmer& mer) -> util::ProjectedHits {
       // the index of this contig
       auto rank = contigRank_(pos);
       // the reference information in the contig table
-      std::cerr << "SEGFAULT 3 start : \n";
       auto& pvec = contigTable_[rank];
-      std::cerr << "SEGFAULT 3 end : \n";
       // start position of this contig
       uint64_t sp =
           (rank == 0) ? 0 : static_cast<uint64_t>(contigSelect_(rank)) + 1;
@@ -1218,9 +658,7 @@ auto  PufferfishIndex::getContigBlock(uint64_t rank)->util::ContigBlock{
  */
 const std::vector<util::Position>&
 PufferfishIndex::refList(uint64_t contigRank) {
-  std::cerr << "SEGFAULT 1 start : \n";
   return contigTable_[contigRank];
-  std::cerr << "SEGFAULT 1 end : \n";
 }
 
 const std::string& PufferfishIndex::refName(uint64_t refRank) {
@@ -1228,6 +666,7 @@ const std::string& PufferfishIndex::refName(uint64_t refRank) {
 }
 
 uint32_t PufferfishIndex::refLength(uint64_t refRank) const {
+	//std::cerr << "chkpt 15 ";
   return refLengths_[refRank];
 }
 
@@ -1236,6 +675,7 @@ const std::vector<std::string>& PufferfishIndex::getRefNames() {
 }
 
 const std::vector<uint32_t>& PufferfishIndex::getRefLengths() const {
+	//std::cerr <<"chkpt 16 ";
   return refLengths_;
 }
 
